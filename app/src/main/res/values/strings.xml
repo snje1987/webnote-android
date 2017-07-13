@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">WebNote</string>
+    <string name="title_activity_site_setting">SiteSettingActivity</string>
+    <string name="site_url_tag">网站URL</string>
+    <string name="password_tag">访问密码</string>
+    <string name="save_tag">保存数据</string>
+</resources>
