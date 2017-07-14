@@ -5,11 +5,19 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.webkit.CookieManager;
+import android.webkit.JsResult;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+
 
 public class MainActivity extends Activity {
 
@@ -27,8 +35,10 @@ public class MainActivity extends Activity {
     }
 
     private void init() {
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.removeAllCookies(null);
+        if(BuildConfig.DEBUG){
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.removeAllCookies(null);
+        }
 
         if (load_cfg()) {
             open_site();
@@ -53,13 +63,15 @@ public class MainActivity extends Activity {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
         final String site_url = this.url;
         final String password = this.password;
         if (site_url.length() == 0 || password.length() == 0) {
             return;
         }
         webView.setWebViewClient(new WebViewClient() {
-            private boolean post = false;
+            private long last_post_time = 0;
+            private boolean posted = false;
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -69,14 +81,49 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                if(BuildConfig.DEBUG){
+                    try {
+                        String urlReal = URLDecoder.decode(url,"UTF-8");
+                        Log.d("Main/onPageFinished","Load Url :" + urlReal);
+                    } catch (UnsupportedEncodingException e) {
+                    }
+                }
+
                 super.onPageFinished(view, url);
                 String login_url = site_url + "/system/login";
-                if (url.equals(login_url) && !post) {
-                    post = true;
-                    webView.postUrl(login_url, ("pwd=" + password + "&app=1").getBytes());
-                } else {
-                    post = false;
+                if (url.equals(login_url) && !posted) {
+                    posted = true;
+                    long now = System.currentTimeMillis();
+                    if (now - last_post_time > 5000) {
+                        last_post_time = now;
+                        webView.postUrl(login_url, ("pwd=" + password + "&app=1").getBytes());
+                    } else {
+                        Toast.makeText(MainActivity.this
+                                , "检测到循环登陆，您的登陆信息可能存在问题，请更正后再试"
+                                , Toast.LENGTH_SHORT).show();
+                    }
                 }
+                else{
+                    posted = false;
+                }
+            }
+        });
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
+                AlertDialog.Builder b2 = new AlertDialog.Builder(MainActivity.this)
+                        .setTitle(R.string.app_name)
+                        .setMessage(message)
+                        .setPositiveButton("ok", new AlertDialog.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                result.confirm();
+                            }
+                        });
+                b2.setCancelable(false);
+                b2.create();
+                b2.show();
+                return true;
             }
         });
         webView.loadUrl(site_url);

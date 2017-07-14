@@ -33,7 +33,7 @@ public class SiteSettingActivity extends AppCompatActivity {
                 while(url.endsWith("/")){
                     url = url.substring(0,url.length() - 1);
                 }
-                Pattern pattern = Pattern.compile("https://(\\w+\\.)+\\w+(:\\d+)?(/[/.\\w-]*)?");
+                Pattern pattern = Pattern.compile("https?://(\\w+\\.)+\\w+(:\\d+)?(/[/.\\w-]*)?");
                 Matcher matcher = pattern.matcher(url);
                 if (!matcher.matches()) {
                     Toast.makeText(SiteSettingActivity.this, "URL格式错误", Toast.LENGTH_SHORT).show();
