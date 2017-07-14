@@ -31,14 +31,15 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ExitApplication.getInstance().addActivity(this);
+        webView = (WebView) findViewById(R.id.webView);
         init();
     }
 
     private void init() {
-        if(BuildConfig.DEBUG){
-            CookieManager cookieManager = CookieManager.getInstance();
-            cookieManager.removeAllCookies(null);
-        }
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.removeAllCookies(null);
+        webView.clearCache(true);
+        webView.clearHistory();
 
         if (load_cfg()) {
             open_site();
@@ -59,7 +60,6 @@ public class MainActivity extends Activity {
     }
 
     private void open_site() {
-        webView = (WebView) findViewById(R.id.webView);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -81,10 +81,10 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if(BuildConfig.DEBUG){
+                if (BuildConfig.DEBUG) {
                     try {
-                        String urlReal = URLDecoder.decode(url,"UTF-8");
-                        Log.d("Main/onPageFinished","Load Url :" + urlReal);
+                        String urlReal = URLDecoder.decode(url, "UTF-8");
+                        Log.d("Main/onPageFinished", "Load Url :" + urlReal);
                     } catch (UnsupportedEncodingException e) {
                     }
                 }
@@ -102,8 +102,7 @@ public class MainActivity extends Activity {
                                 , "检测到循环登陆，您的登陆信息可能存在问题，请更正后再试"
                                 , Toast.LENGTH_SHORT).show();
                     }
-                }
-                else{
+                } else {
                     posted = false;
                 }
             }
