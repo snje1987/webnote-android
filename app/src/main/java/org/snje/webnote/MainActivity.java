@@ -1,22 +1,34 @@
 package org.snje.webnote;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v7.app.AlertDialog;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.webkit.CookieManager;
 import android.webkit.JsResult;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+
+import static android.R.attr.data;
 
 
 public class MainActivity extends Activity {
@@ -25,6 +37,8 @@ public class MainActivity extends Activity {
     private String[] listItems = new String[]{"网站登陆信息设定"};
     private String url;
     private String password;
+    private ValueCallback<Uri[]> mUploadMessage;
+    private final static int FILECHOOSER_RESULTCODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +78,16 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        // 设置可以支持缩放
+        settings.setSupportZoom(true);
+        // 设置出现缩放工具
+        settings.setBuiltInZoomControls(true);
+        // 为图片添加放大缩小功能
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+
+        webView.setInitialScale(100);   //100代表不缩放
+
         final String site_url = this.url;
         final String password = this.password;
         if (site_url.length() == 0 || password.length() == 0) {
@@ -124,6 +148,21 @@ public class MainActivity extends Activity {
                 b2.show();
                 return true;
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView webView,
+                                             ValueCallback<Uri[]> filePathCallback,
+                                             FileChooserParams fileChooserParams) {
+                if (mUploadMessage != null) {
+                    mUploadMessage.onReceiveValue(null);
+                }
+                mUploadMessage = filePathCallback;
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                i.setType("*/*");
+                i.putExtra("return-data",true);
+                startActivityForResult(i,FILECHOOSER_RESULTCODE);
+                return true;
+            }
         });
         webView.loadUrl(site_url);
     }
@@ -169,5 +208,28 @@ public class MainActivity extends Activity {
                 return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FILECHOOSER_RESULTCODE) {
+            if (null == mUploadMessage) return;
+            Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
+            if (result == null) {
+                mUploadMessage.onReceiveValue(null);
+                mUploadMessage = null;
+                return;
+            }
+            String path =  FileUtils.getPath(this, result);
+            if (TextUtils.isEmpty(path)) {
+                mUploadMessage.onReceiveValue(null);
+                mUploadMessage = null;
+                return;
+            }
+            Uri uri = Uri.fromFile(new File(path));
+            mUploadMessage.onReceiveValue(new Uri[]{uri});
+            mUploadMessage = null;
+        }
     }
 }
