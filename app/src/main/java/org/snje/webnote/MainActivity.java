@@ -1,15 +1,11 @@
 package org.snje.webnote;
 
 import android.app.Activity;
-import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.Cursor;
-import android.graphics.Bitmap;
+import android.content.res.Configuration;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.Log;
@@ -24,17 +20,14 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-
-import static android.R.attr.data;
 
 
 public class MainActivity extends Activity {
 
     private WebView webView;
-    private String[] listItems = new String[]{"网站登陆信息设定"};
+    private String[] listItems = new String[]{"网站登陆信息设定", "退出程序"};
     private String url;
     private String password;
     private ValueCallback<Uri[]> mUploadMessage;
@@ -46,6 +39,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         ExitApplication.getInstance().addActivity(this);
         webView = (WebView) findViewById(R.id.webView);
+        Log.d("Main/onCreate", "Create :");
         init();
     }
 
@@ -63,8 +57,8 @@ public class MainActivity extends Activity {
     private boolean load_cfg() {
         try {
             String[] data = DataService.getSavedUserInfo(this);
-            this.url = data[0];
-            this.password = data[1];
+            this.url = data[0] == null ? "" : data[0];
+            this.password = data[1] == null ? "" : data[1];
             return true;
         } catch (Exception e) {
             this.url = "";
@@ -82,6 +76,7 @@ public class MainActivity extends Activity {
         settings.setSupportZoom(true);
         // 设置出现缩放工具
         settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
         // 为图片添加放大缩小功能
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
@@ -90,7 +85,7 @@ public class MainActivity extends Activity {
 
         final String site_url = this.url;
         final String password = this.password;
-        if (site_url.length() == 0 || password.length() == 0) {
+        if (site_url == null || site_url.length() == 0) {
             return;
         }
         webView.setWebViewClient(new WebViewClient() {
@@ -159,8 +154,8 @@ public class MainActivity extends Activity {
                 mUploadMessage = filePathCallback;
                 Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                 i.setType("*/*");
-                i.putExtra("return-data",true);
-                startActivityForResult(i,FILECHOOSER_RESULTCODE);
+                i.putExtra("return-data", true);
+                startActivityForResult(i, FILECHOOSER_RESULTCODE);
                 return true;
             }
         });
@@ -170,7 +165,7 @@ public class MainActivity extends Activity {
     private void show_menu() {
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
         builder.setIcon(R.mipmap.ic_launcher);
-        builder.setTitle("再次点击返回键退出程序");
+        builder.setTitle("WebNote");
         AlertDialog.Builder builder1 = builder.setItems(listItems,
                 new DialogInterface.OnClickListener() {
                     @Override
@@ -180,15 +175,12 @@ public class MainActivity extends Activity {
                             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                             startActivity(intent);
                         }
+                        else if(which == 1){
+                            ExitApplication.getInstance().exit();
+                        }
                     }
                 });
         final AlertDialog dlg = builder.create();
-        dlg.setOnCancelListener(new DialogInterface.OnCancelListener() {
-            @Override
-            public void onCancel(DialogInterface dialog) {
-                ExitApplication.getInstance().exit();
-            }
-        });
         dlg.show();
     }
 
@@ -197,6 +189,11 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         load_cfg();
         open_site();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
     }
 
     //对物理按钮的监听
@@ -221,7 +218,7 @@ public class MainActivity extends Activity {
                 mUploadMessage = null;
                 return;
             }
-            String path =  FileUtils.getPath(this, result);
+            String path = FileUtils.getPath(this, result);
             if (TextUtils.isEmpty(path)) {
                 mUploadMessage.onReceiveValue(null);
                 mUploadMessage = null;
